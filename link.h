@@ -1,10 +1,13 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
 #include "colors.h"
+
 typedef struct Node {
-    size_t prev;
-    size_t next; //TODO ASK DED ABOUT SIZE_T AND -1 TODO also ask about "size" field opacity
+    ssize_t prev;
+    ssize_t next; //TODO ASK DED ABOUT SIZE_T AND -1 TODO also ask about "size" field opacity
     int val;
 } Node;
 
@@ -47,6 +50,7 @@ int dump_finish(const char* filename);
 
 
 int verify_list(struct ListNode* list){
+
     int err = 0;
     if(list->capacity > list->size){
         err = LIST_CAPACITY_OVERFLOW_ERR;
@@ -60,17 +64,17 @@ int verify_list(struct ListNode* list){
         }
     }
 
-    for (int i = list->data[0].next;  (i!=0); i = list->data[i].next ){
-        if (((list->data[i].prev == i) || (list->data[i].next == i)) && (i!=0)) {
-            err = LIST_CYCLE_ERR;
-        }
-    }
+    // for (int i = list->data[0].next;  (i!=0); i = list->data[i].next ){
+        // if (((list->data[i].prev == i) || (list->data[i].next == i)) && (i!=0)) {
+        //     err = LIST_CYCLE_ERR;
+        // }
+    // }
 
-    for (int i = list->data[0].next;  (i!=0); i = list->data[i].next ){
-        if (list->data[i].val == '0xNE') {
-            err = LIST_INTERVENTION_ERR;
-        }
-    }
+    // for (int i = list->data[0].next;  (i!=0); i = list->data[i].next ){
+    //     if (list->data[i].val == '0xNE') {
+    //         err = LIST_INTERVENTION_ERR;
+    //     }
+    // }
     if (err != 0){
         switch (err){
             case LIST_CAPACITY_OVERFLOW_ERR:
@@ -341,6 +345,10 @@ int dump_init(const char* filename){
     return 1;
 }
 void list_dump(struct ListNode* list, const char* filename, const char* command_log){
+
+
+    // used node + gz static text
+
     static size_t dump_count = 1;
     char gz_static1[1024] = {};
         snprintf(gz_static1, 1024 ,"digraph LinkedList {\n\
@@ -354,19 +362,23 @@ void list_dump(struct ListNode* list, const char* filename, const char* command_
             fontname=\"Helvetica\"\n\
         ];\n\
     \n\
-        node [\n\
-            shape=Mrecord,\n\
-            style=filled,\n\
-            fontname=\"Helvetica\",\n\
-            fontsize=12,\n\
-            penwidth=1.5\n\
-        ];\n\
-        \n\
-        edge [\n\
-            arrowsize=0.7,\n\
-            penwidth=1.7\n\
-        ];\n\
-        \n\
+    node [\n\
+        shape=Mrecord,\n\
+        style=filled,\n\
+        fillcolor=\"#FF0000\",\n\
+        color=\"#374151\",\n\
+        fontname=\"Helvetica\",\n\
+        fontsize=12,\n\
+        penwidth=1.5\n\
+    ];\n\
+    \n\
+    edge [\n\
+        arrowsize=0.7,\n\
+        penwidth=1.7,\n\
+        color=\"#EF4444\",\n\
+        dir=forward\n\
+    ];\n\
+    \n\
         subgraph cluster_used {\n\
             label=\"USED LIST | size = %zu\";\n\
             style=\"rounded,filled\";\n\
@@ -382,50 +394,151 @@ void list_dump(struct ListNode* list, const char* filename, const char* command_
     snprintf(dot_filename, 20, "dump%zu.dot", dump_count);
     FILE* gz_fp = fopen(dot_filename ,"w");
 
+
     fprintf(fp, "<h2>Dump %zu</h2>", dump_count);
     FPrintList(list, fp);
 
+
+    //sentinel node
+
     fprintf(gz_fp, "%s", gz_static1);
-    fprintf(gz_fp, "n0 [\n\
-            label=\"{DUMMY #0|value: 0|{prev: %zu|next: %zu}}\",\n\
-            fillcolor=\"#DBEAFE\",\n\
-            color=\"#3B82F6\"\n\
-        ];\n", list->data[0].prev, list->data[0].next);
-    //n2 [label="{NODE #2|value: 17|{prev: 0|next: 1}}"];
-    for (size_t i = list->data[0].next, c = 1; i != 0; i = list->data[i].next, c++){
-        fprintf(gz_fp, "n%zu[label=\"{NODE #%zu|value: %d|{prev: %zu|next: %zu}}\"];\n", i, i, list->data[i].val, list->data[i].prev, list->data[i].next);
-    }
-//
-// n0 -> n2 [color="#0D9488"];
-//    n2 -> n1 [color="#0D9488"];
- //   n1 -> n0 [color="#0D9488", constraint=false];
-//
-    fprintf(gz_fp, "n0 -> n%zu [color=\"#0D9488\"];\n", list->data[0].next);
-    for (size_t i = list->data[0].next, c = 1; i != 0; i = list->data[i].next, c++){
-        if (list->data[i].next == 0){
-             fprintf(gz_fp, "n%zu -> n%zu [color=\"#0D9488\", constraint=false];\n", i, list->data[i].next);
-             continue;
+    fprintf(gz_fp,
+        "a0 [shape=plain, label=<"
+        "<TABLE BORDER=\"0\" CELLBORDER=\"1\" "
+               "CELLSPACING=\"0\" CELLPADDING=\"8\" "
+               "BGCOLOR=\"#DBEAFE\" COLOR=\"#3B82F6\">"
+            "<TR>"
+                "<TD ROWSPAN=\"2\">prev: %zd</TD>"
+                "<TD>SENTINEL #0</TD>"
+                "<TD ROWSPAN=\"2\">next: %zd</TD>"
+            "</TR>"
+            "<TR>"
+                "<TD>value: 0</TD>"
+            "</TR>"
+        "</TABLE>>];\n",
+        list->data[0].prev,
+        list->data[0].next);
+
+
+    //used nodes 1 iteration
+
+    for (size_t i = 0; i < list->size ;i++){
+        if (list->data[i].val == '0xNE'){
+            continue;
         }
-        fprintf(gz_fp, "n%zu -> n%zu [color=\"#0D9488\"];\n", i, list->data[i].next);
+
+        fprintf(gz_fp,
+            "a%zu [shape=plain, label=<"
+            "<TABLE BORDER=\"0\" CELLBORDER=\"1\" "
+                   "CELLSPACING=\"0\" CELLPADDING=\"8\" BGCOLOR=\"#FFFFFF\">"
+                "<TR>"
+                    "<TD ROWSPAN=\"2\" >prev: %zd</TD>"
+                    "<TD>NODE #%zu</TD>"
+                    "<TD ROWSPAN=\"2\" >next: %zd</TD>"
+                "</TR>"
+                "<TR>"
+                    "<TD>value: %d</TD>"
+                "</TR>"
+            "</TABLE>>];\n",
+            i,
+            list->data[i].prev,
+            i,
+            list->data[i].next,
+            list->data[i].val);
+        printf("%zu %zd %zd \n", i, list->data[i].prev, list->data[i].next );
+        if(list->data[i].next < 0 || list->data[i].next >= list->size || i != list->data[list->data[i].next].prev){
+            fprintf(gz_fp, "a%zu -> a%zu [color=\"#EF4444\"];\n", i, list->data[i].next);
+            printf(RED "1 " RESET);
+        }
+        else{
+             fprintf(gz_fp, "a%zu -> a%zu [dir=both, color=\"#374151\"];\n", i, list->data[i].next);
+             printf(RED "31 " RESET);
+        }
+        if (list->data[i].prev < 0 || list->data[i].prev >= list->size || i != list->data[list->data[i].prev].next){
+            fprintf(gz_fp, "a%zu -> a%zu [color=\"#EF4444\"];\n", list->data[i].prev, i);
+            printf(RED "2 " RESET);
+        }
+        printf("\n");
+            // fprintf(gz_fp, "a%zu -> a%zu [color=\"#EF4444\"];\n", i, list->data[i].prev);
+            // fprintf(gz_fp, "a%zu -> a%zu [dir=both, color=\"#374151\"];\n", i, list->data[i].prev);
     }
 
-    fprintf(gz_fp, "n0:ne -> n%zu:nw [\n\
-        color=\"#F59E0B\",\n\
-        style=dashed,\n\
-        constraint=false\n\
-    ];\n", list->data[0].prev);
 
-    // fprintf(gz_fp, "n0 -> n%zu [color=\"#0D9488\"];\n", list->data[0].next);
-    for (size_t i = list->data[0].prev; i != 0; i = list->data[i].prev){
+//     for (size_t i = list->data[0].next, c = 1; i != 0; i = list->data[i].next, c++){
+//         if (list->data[i].prev > list->capacity || list->data[list->data[i].prev].val == '0xNE' || list->data[i].prev < 0){prev_bad = true;}
+//         else{prev_bad=false;}
+//         prev_bg = prev_bad ? "#FEE2E2" : "#FFFFFF";
+//
+//         if (list->data[i].next > list->capacity || list->data[list->data[i].next].val == '0xNE' || list->data[i].next < 0){next_bad = true;}
+//         else{next_bad=false;}
+//         next_bg = next_bad ? "#FEE2E2" : "#FFFFFF";
+//         fprintf(gz_fp,
+//             "a%zu [shape=plain, label=<"
+//             "<TABLE BORDER=\"0\" CELLBORDER=\"1\" "
+//                    "CELLSPACING=\"0\" CELLPADDING=\"8\" BGCOLOR=\"#FFFFFF\">"
+//                 "<TR>"
+//                     "<TD ROWSPAN=\"2\" BGCOLOR=\"%s\">prev: %zd</TD>"
+//                     "<TD>NODE #%zu</TD>"
+//                     "<TD ROWSPAN=\"2\" BGCOLOR=\"%s\">next: %zd</TD>"
+//                 "</TR>"
+//                 "<TR>"
+//                     "<TD>value: %d</TD>"
+//                 "</TR>"
+//             "</TABLE>>];\n",
+//             i,
+//             prev_bg, list->data[i].prev,
+//             i,
+//             next_bg, list->data[i].next,
+//             list->data[i].val);
+//         if (prev_bad || next_bad){break;}
+//     }
+//
 
-        fprintf(gz_fp, "n%zu -> n%zu [\n\
-            color=\"#F59E0B\",\n\
-            style=dashed,\n\
-            constraint=false\n\
-        ];\n", i, list->data[i].prev);
-    }
+    // links for used nodes
+
+    // fprintf(gz_fp, "a0 -> a%zu [color=\"#0D9488\"];\n", list->data[0].next);
+    // for (size_t i = list->data[0].next, c = 1; i != 0; i = list->data[i].next, c++){
+    //     if (list->data[i].next > list->capacity || list->data[list->data[i].next].val == '0xNE' || list->data[i].next < 0){next_bad = true;}
+    //     else{next_bad=false;}
+    //     if (next_bad){
+    //         fprintf(gz_fp, "a%zu -> a%zu [color=\"#0D9488\"];\n", i, list->data[i].next);
+    //         break;
+    //     }
+    //     if (list->data[i].next == 0){
+    //          fprintf(gz_fp, "a%zu -> a%zu [color=\"#0D9488\", constraint=false];\n", i, list->data[i].next);
+    //          continue;
+    //     }
+    //     fprintf(gz_fp, "a%zu -> a%zu [color=\"#0D9488\"];\n", i, list->data[i].next);
+    // }
+
+    // backwards links (special for sentinel because)
+
+    // fprintf(gz_fp, "a0:ne -> a%zu:nw [\n\
+    //     color=\"#F59E0B\",\n\
+    //     style=dashed,\n\
+    //     constraint=false\n\
+    // ];\n", list->data[0].prev);
+
+
+    // backwards links for used nodes
+
+    // for (ssize_t i = list->data[0].prev; i != 0; i = list->data[i].prev){
+    //     if (list->data[i].prev < 0 || list->data[i].prev > list->capacity | list->data[list->data[i].prev].val == '0xNE'){prev_bad = true;}
+    //     if (!prev_bad){
+    //     fprintf(gz_fp, "a%zu -> a%zu [\n\
+    //         color=\"#F59E0B\",\n\
+    //         style=dashed,\n\
+    //         constraint=false\n\
+    //     ];\n", i, list->data[i].prev);
+    //     }
+    //     else{
+    //         break;
+    //     }
+    // }
 
     fprintf(gz_fp, "}\n");
+
+    // static text for free nodes
 
     char gz_static2[1024] = {};
     snprintf(gz_static2,1024,
@@ -445,12 +558,13 @@ void list_dump(struct ListNode* list, const char* filename, const char* command_
 
      fprintf(gz_fp, "%s", gz_static2);
 
-     //n3 [label="{FREE #3|prev: -1|next: 4}"];
-     //
+
+     // free nodes initilization
      for (size_t i = list->freehead, c = 1; (int)i != -1; i = list->data[i].next, c++){
-         fprintf(gz_fp, "n%zu [label=\"{FREE #%zu|prev: -1|next: %d}\"];\n", i, i, (int)list->data[i].next);
+         fprintf(gz_fp, "b%zu [label=\"{FREE #%zu|prev: -1|next: %d}\"];\n", i, i, (int)list->data[i].next);
      }
 
+     // null node initilization
      fprintf(gz_fp, "null [\n\
          label=\"NULL\",\n\
          shape=oval,\n\
@@ -461,22 +575,15 @@ void list_dump(struct ListNode* list, const char* filename, const char* command_
 
      fprintf(gz_fp, "edge [color=\"#94A3B8\"];\n");
 
-     // n3 -> n4;
-     // n4 -> n5;
-     // n5 -> n6;
-     // n6 -> n7;
-     // n7 -> n8;
-     // n8 -> n9;
-     // n9 -> null [style=dashed];
-     //
+     // free nodes links
 
      for (size_t i = list->freehead; (int)i != -1; i = list->data[i].next){
 
          if ((int)list->data[i].next == -1){
-             fprintf(gz_fp, "n%zu -> null [style=dashed];\n", i);
+             fprintf(gz_fp, "b%zu -> null [style=dashed];\n", i);
              continue;
          }
-         fprintf(gz_fp, "n%zu -> n%zu;\n", i, list->data[i].next);
+         fprintf(gz_fp, "b%zu -> b%zu;\n", i, list->data[i].next);
      }
 
 

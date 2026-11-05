@@ -24,8 +24,8 @@ int main(){
     list_dump(&list, dump_filename, "remove(3)");
     remove_node(&list, 3);
     list_dump(&list, dump_filename, "remove(2)");
-    remove_node(&list, 2);
-    list_dump(&list, dump_filename, "remove(1)");
+    list.data[1].next=100;
+    list_dump(&list, dump_filename, "shii");
 
 
     dump_finish(dump_filename);

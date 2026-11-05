@@ -28,6 +28,9 @@ flowchart LR
     end
 ```
 
+![](image.png)
+![](image_1.png)
+
 ## Быстрый старт
 
 Нужны компилятор C (`clang` или `gcc`) и [Graphviz](https://graphviz.org/) — команда `dot` используется для построения SVG.
